@@ -4,12 +4,15 @@ import { exec } from "child_process";
 const app = express();
 app.use(express.json());
 
-// Webhook endpoint
 app.post("/webhook", (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${process.env.NODEJS_SECRET}`) {
+    return res.status(403).send("Forbidden");
+  }
+
   const { itemId } = req.body;
   console.log("Webhook received for item:", itemId);
 
-  // Run CLI command programmatically
   exec(`node src/index.js run ${itemId}`, (error, stdout, stderr) => {
     if (error) {
       console.error("Error:", error);
