@@ -10,7 +10,8 @@ app.post("/webhook", (req, res) => {
 
   exec(`node src/index.js run ${itemId}`, (error, stdout, stderr) => {
     if (error) {
-      console.error("Error:", error);
+      console.error("Exec error:", error);
+      console.error("Stderr:", stderr);
       return res.status(500).send("CLI failed");
     }
     console.log("CLI output:", stdout);
