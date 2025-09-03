@@ -5,11 +5,6 @@ const app = express();
 app.use(express.json());
 
 app.post("/webhook", (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.NODEJS_SECRET}`) {
-    return res.status(403).send("Forbidden");
-  }
-
   const { itemId } = req.body;
   console.log("Webhook received for item:", itemId);
 
