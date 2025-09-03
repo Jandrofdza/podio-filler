@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { runItemFiles } from "./run.js";
 import { getItemFiles } from "./podio.js";   // ✅ only import what exists
-import cfg from "./config.js";
+import { cfg } from "./config.js";
 
 const program = new Command();
 
