@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { cfg } from './config.js';
 import { appAuth, getItem, getItemFiles, getFileMeta, downloadFromLink } from './podio.js';
 import { supaClient, uploadBuffer, makeKey, ensureContentType } from './supabase.js';
-import { runOnce, ensureAccessToken } from './run.js';
+import { runOnce } from './run.js';
 
 const program = new Command();
 
