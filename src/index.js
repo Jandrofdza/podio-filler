@@ -1,6 +1,6 @@
 import { cfg, hasSupabase, hasOpenAI } from "./config.js";
-import { runItemFiles, ensureAccessToken } from "./run.js";
-import { getItemFiles } from "./podio.js";
+import { runItemFiles } from "./run.js";
+import { getItemFiles, ensureAccessToken } from "./podio.js";
 import { Command } from "commander";
 
 const program = new Command();
