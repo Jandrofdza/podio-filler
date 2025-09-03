@@ -1,0 +1,114 @@
+import { cfg, hasSupabase, hasOpenAI } from './config.js';
+import { appAuth, getItem, getItemFiles, setItemValues, downloadFileBytes } from './podio.js';
+import { supaClient, uploadBuffer, makeKey, ensureContentType } from './supabase.js';
+import { classifyInputs } from './openai.js';
+import { extractPdfText } from './pdf.js';
+
+const FIELDS = {
+  // TODO: replace with your real field IDs (numbers) from Podio
+  nombre_corto: 1111111111,
+  descripcion: 2222222222,
+  requ_id: 3333333333,
+  fraccion: 4444444444,
+  justificacion: 5555555555,
+  arbol: 6666666666,
+  alternativas: 7777777777,
+  dudas_cliente: 8888888888,
+  regulacion: 9999999999,
+  notas_clasificador: 1010101010,
+};
+
+function toItemValues(itemId, result) {
+  return {
+    [FIELDS.nombre_corto]: [{ value: result.nombre_corto ?? '' }],
+    [FIELDS.descripcion]: [{ value: result.descripcion ?? '' }],
+    [FIELDS.requ_id]: [{ value: result.requ_id ?? String(itemId) }],
+    [FIELDS.fraccion]: [{ value: result.fraccion ?? '' }],
+    [FIELDS.justificacion]: [{ value: result.justificacion ?? '' }],
+    [FIELDS.arbol]: [
+      { value: Array.isArray(result.arbol) ? result.arbol.join('\n- ') : String(result.arbol ?? '') },
+    ],
+    [FIELDS.alternativas]: [
+      { value: (result.alternativas || []).map((a) => `- ${a.fraccion}: ${a.motivo}`).join('\n') },
+    ],
+    [FIELDS.dudas_cliente]: [{ value: result.dudas_cliente ?? '' }],
+    [FIELDS.regulacion]: [{ value: result.regulacion ?? '' }],
+    [FIELDS.notas_clasificador]: [{ value: result.notas_clasificador ?? '' }],
+  };
+}
+
+function asDataUrl(buffer, mimetype) {
+  const b64 = buffer.toString('base64');
+  return `data:${mimetype || 'application/octet-stream'};base64,${b64}`;
+}
+
+export async function ensureAccessToken() {
+  if (cfg.podio.accessToken) return cfg.podio.accessToken;
+  const json = await appAuth({
+    clientId: cfg.podio.clientId,
+    clientSecret: cfg.podio.clientSecret,
+    appId: cfg.podio.appId,
+    appToken: cfg.podio.appToken,
+  });
+  return json.access_token;
+}
+
+export async function runOnce(itemId) {
+  const token = await ensureAccessToken();
+
+  // 1) Load item & files
+  const item = await getItem(itemId, token);
+  const files = getItemFiles(item);
+  if (!files?.length) {
+    console.log('Item has no files.');
+    return;
+  }
+
+  // 2) Download files and prep inputs for GPT
+  let imageInputs = []; // URLs (public) or data URLs
+  let pdfTexts = [];
+
+  // Optional Supabase client
+  const supa = hasSupabase ? supaClient(cfg.supabase) : null;
+
+  let i = 0;
+  for (const f of files) {
+    const meta = await getFileMeta(f.file_id, token); // has .link
+    const buffer = await downloadFromLink(meta.link);
+    const type = ensureContentType(f);
+
+    if (type.startsWith('image/')) {
+      if (supa) {
+        const key = makeKey(itemId, f, i++);
+        const url = await uploadBuffer(supa, cfg.supabase.bucket, key, buffer, type);
+        imageInputs.push(url);
+      } else {
+        // fallback: send as data URL (works fine, just larger payload)
+        imageInputs.push(asDataUrl(buffer, type));
+      }
+    } else if (type === 'application/pdf') {
+      // (optional) store PDF for traceability if Supabase is available
+      if (supa) {
+        const key = makeKey(itemId, f, i++);
+        await uploadBuffer(supa, cfg.supabase.bucket, key, buffer, type);
+      }
+      let _t=""; try{ _t = await extractPdfText(buffer); } catch(e){ console.warn("PDF parse failed:", e?.message||e);} if(_t) pdfTexts.push(_t);
+    }
+  }
+
+  if (!hasOpenAI) throw new Error('Missing OPENAI_API_KEY');
+
+  if (imageInputs.length === 0 && pdfTexts.length === 0) {
+    console.log('No usable inputs (no images and PDF had no extractable text).');
+    return;
+  }
+
+  // 3) GPT classify
+  const result = await classifyInputs({ imageUrls: imageInputs, texts: pdfTexts }, cfg.openai.apiKey);
+  console.log('GPT result:', result);
+
+  // 4) Write back
+  const values = toItemValues(itemId, result);
+  await setItemValues(itemId, values, token);
+  console.log('Podio updated OK');
+}
