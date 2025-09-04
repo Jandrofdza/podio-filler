@@ -1,11 +1,10 @@
-// helpers/podio.js  (ESM, Node 18+ with global fetch)
+// helpers/podio.js  (ESM)
 
 export async function getPodioAppToken() {
-  const appId = process.env.PODIO_APP_ID;
-  const appToken = process.env.PODIO_APP_TOKEN;
-  if (!appId || !appToken) throw new Error("Missing PODIO_APP_ID or PODIO_APP_TOKEN");
+  const { PODIO_APP_ID, PODIO_APP_TOKEN } = process.env;
+  if (!PODIO_APP_ID || !PODIO_APP_TOKEN) throw new Error("Missing PODIO_APP_ID or PODIO_APP_TOKEN");
 
-  const body = new URLSearchParams({ grant_type: "app", app_id: appId, app_token: appToken });
+  const body = new URLSearchParams({ grant_type: "app", app_id: PODIO_APP_ID, app_token: PODIO_APP_TOKEN });
   const r = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -37,9 +36,7 @@ export async function downloadFileBytes(accessToken, fileId) {
   return Buffer.from(ab);
 }
 
-/**
- * Returns: [{ file_id, name, mimetype, size, bytes }, ...]
- */
+/** Returns: [{ file_id, name, mimetype, size, bytes }, ...] */
 export async function fetchPodioFiles(itemId) {
   const token = await getPodioAppToken();
   const metas = await listItemFiles(token, itemId);
