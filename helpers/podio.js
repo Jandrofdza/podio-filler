@@ -1,5 +1,3 @@
-// helpers/podio.js  (ESM)
-
 export async function getPodioAppToken() {
   const { PODIO_APP_ID, PODIO_APP_TOKEN } = process.env;
   if (!PODIO_APP_ID || !PODIO_APP_TOKEN) throw new Error("Missing PODIO_APP_ID or PODIO_APP_TOKEN");
