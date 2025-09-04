@@ -18,16 +18,12 @@ app.post("/podio-hook", (req, res) => {
   if (item_id) {
     console.log(`Processing item_id=${item_id}, req_id=${req_id}`);
     // TODO: download Podio file, run GPT, update Podio
-  } else {
-    console.warn("No item_id found in payload!");
-  }
+
+} else {
+  console.warn("No item_id found in payload!");
+}
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Node filler running on http://localhost:${PORT}`);
-});
-// Render requires listening on PORT, not hardcoded 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Node filler listening on port ${PORT}`);
