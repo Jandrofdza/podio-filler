@@ -1,24 +1,35 @@
+
 import express from "express";
-import { exec } from "child_process";
+import bodyParser from "body-parser";
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-app.post("/webhook", (req, res) => {
-  const { itemId } = req.body;
-  console.log("Webhook received for item:", itemId);
+app.post("/podio-hook", (req, res) => {
+  console.log("=== Incoming /podio-hook request ===");
+  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
 
-  exec(`node src/index.js run ${itemId}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error("Exec error:", error);
-      console.error("Stderr:", stderr);
-      return res.status(500).send("CLI failed");
-    }
-    console.log("CLI output:", stdout);
-    res.send("Processed successfully");
-  });
+  // Send quick response to Supabase
+  res.status(202).send("Received");
+
+  // Simulate next steps (later: fetch Podio, GPT, update fields)
+  const { item_id, req_id } = req.body || {};
+  if (item_id) {
+    console.log(`Processing item_id=${item_id}, req_id=${req_id}`);
+    // TODO: download Podio file, run GPT, update Podio
+  } else {
+    console.warn("No item_id found in payload!");
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Podio CLI server running on port ${PORT}`));
-// redeploy trigger
+app.listen(PORT, () => {
+  console.log(`Node filler running on http://localhost:${PORT}`);
+});
+// Render requires listening on PORT, not hardcoded 3000
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Node filler listening on port ${PORT}`);
+});
+
