@@ -1,66 +1,55 @@
 import express from "express";
-import fetch from "node-fetch"; // ensure installed
-import bodyParser from "body-parser";
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
-// ENV
-const PODIO_BASE = "https://api.podio.com";
-const APP_ID = process.env.PODIO_APP_ID;
-const APP_TOKEN = process.env.PODIO_APP_TOKEN;
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-
-// Podio token helper
+// --- Function to fetch a Podio token ---
 async function getPodioToken() {
-  const body = new URLSearchParams({
-    grant_type: "app",
-    app_id: APP_ID,
-    app_token: APP_TOKEN
-  });
-
-  const resp = await fetch(`${PODIO_BASE}/oauth/token`, {
+  const res = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body
+    body: new URLSearchParams({
+      grant_type: "app",
+      app_id: process.env.PODIO_APP_ID,
+      app_token: process.env.PODIO_APP_TOKEN,
+      client_id: process.env.PODIO_CLIENT_ID,
+      client_secret: process.env.PODIO_CLIENT_SECRET,
+    }),
   });
-  if (!resp.ok) throw new Error(`Podio token error: ${await resp.text()}`);
-  const data = await resp.json();
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Failed to get Podio token: ${txt}`);
+  }
+  const data = await res.json();
   return data.access_token;
 }
 
-// Fetch attached files from Podio
-async function getPodioFiles(itemId, token) {
-  const resp = await fetch(`${PODIO_BASE}/item/${itemId}`, {
-    headers: { Authorization: `OAuth2 ${token}` }
-  });
-  if (!resp.ok) throw new Error(`Failed to fetch item ${itemId}: ${await resp.text()}`);
-  const item = await resp.json();
-  return item.files || [];
-}
-
+// --- Main handler ---
 app.post("/podio-hook", async (req, res) => {
   console.log("=== Incoming /podio-hook request ===");
   console.log("Headers:", req.headers);
   console.log("Body:", req.body);
 
-  const { item_id, req_id } = req.body;
+  res.status(202).send("Received");
+
+  const { item_id, req_id } = req.body || {};
   if (!item_id) {
-    res.status(400).send("Missing item_id");
+    console.warn("No item_id found in payload!");
     return;
   }
 
-  res.status(202).send("Received"); // ACK quickly
-
   try {
+    console.log(`Processing item_id=${item_id}, req_id=${req_id}`);
     const token = await getPodioToken();
-    const files = await getPodioFiles(item_id, token);
-    console.log(`Fetched ${files.length} files for item ${item_id}`);
-    files.forEach(f => {
-      console.log(`- File: ${f.name} (${f.link})`);
-    });
 
-    // TODO: download file(s), send to GPT, update Podio fields
+    const filesResp = await fetch(`https://api.podio.com/item/${item_id}/files`, {
+      headers: { Authorization: `OAuth2 ${token}` },
+    });
+    const files = await filesResp.json();
+    console.log("Files for item:", item_id, files);
+
+    // Later: forward files to GPT / Supabase etc.
   } catch (err) {
     console.error("Error handling item:", err);
   }
