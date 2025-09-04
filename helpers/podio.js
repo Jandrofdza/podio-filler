@@ -1,7 +1,6 @@
 export async function getPodioAppToken() {
   const { PODIO_APP_ID, PODIO_APP_TOKEN } = process.env;
   if (!PODIO_APP_ID || !PODIO_APP_TOKEN) throw new Error("Missing PODIO_APP_ID or PODIO_APP_TOKEN");
-
   const body = new URLSearchParams({ grant_type: "app", app_id: PODIO_APP_ID, app_token: PODIO_APP_TOKEN });
   const r = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
@@ -12,7 +11,6 @@ export async function getPodioAppToken() {
   if (!r.ok || !j.access_token) throw new Error(`Podio token error ${r.status}: ${JSON.stringify(j)}`);
   return j.access_token;
 }
-
 export async function listItemFiles(accessToken, itemId) {
   const r = await fetch(`https://api.podio.com/item/${itemId}/files`, {
     headers: { Authorization: `OAuth2 ${accessToken}` },
@@ -21,7 +19,6 @@ export async function listItemFiles(accessToken, itemId) {
   if (!r.ok) throw new Error(`List files error ${r.status}: ${JSON.stringify(j)}`);
   return Array.isArray(j) ? j : [];
 }
-
 export async function downloadFileBytes(accessToken, fileId) {
   const r = await fetch(`https://api.podio.com/file/${fileId}/download`, {
     headers: { Authorization: `OAuth2 ${accessToken}` },
@@ -33,7 +30,6 @@ export async function downloadFileBytes(accessToken, fileId) {
   const ab = await r.arrayBuffer();
   return Buffer.from(ab);
 }
-
 /** Returns: [{ file_id, name, mimetype, size, bytes }, ...] */
 export async function fetchPodioFiles(itemId) {
   const token = await getPodioAppToken();
