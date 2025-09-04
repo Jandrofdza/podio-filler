@@ -75,3 +75,38 @@ if (!globalThis.__serverStarted) {
 }
 globalThis.app = app;
 
+
+/* === Podio debug endpoint (non-invasive) === */
+import express from "express";
+const __podioDebugApp = (globalThis.app instanceof Function ? globalThis.app : null) || (typeof app !== "undefined" ? app : null);
+const __ensureApp = () => __podioDebugApp || (globalThis.app = (globalThis.app || express()));
+
+(async () => {
+  try {
+    const { fetchPodioFiles } = await import("./helpers/podio.js");
+    const _app = __ensureApp();
+    if (!_app._router) _app.use(express.json({ limit: "25mb" }));
+
+    _app.get("/debug/item-files", async (req, res) => {
+      const item_id = Number(req.query.item_id);
+      if (!item_id) return res.status(400).json({ error: "missing item_id" });
+      try {
+        const files = await fetchPodioFiles(item_id);
+        res.json({ item_id, count: files.length, files: files.map(f => ({
+          file_id: f.file_id, name: f.name, mimetype: f.mimetype, size: f.size
+        }))});
+      } catch (e) {
+        res.status(500).json({ error: String(e) });
+      }
+    });
+
+    if (!globalThis.__serverStarted) {
+      const PORT = process.env.PORT || 3000;
+      _app.listen(PORT, () => console.log(`Filler listening on :${PORT}`));
+      globalThis.__serverStarted = true;
+    }
+  } catch (e) {
+    console.error("podio debug init error:", e);
+  }
+})();
+/* === end debug endpoint === */
