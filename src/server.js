@@ -2,6 +2,7 @@
 app.get('/healthz', (_req, res) => {
   res.status(200).send('ok :: debug routes mounted');
 });
+
 app.get('/debug/item-files', async (req, res) => {
   const item_id = Number(req.query.item_id);
   if (!item_id) return res.status(400).json({ error: 'missing item_id' });
