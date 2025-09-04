@@ -6,7 +6,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // ENV
-const PODIO_BASE = "https://api.podio.com"\;
+const PODIO_BASE = "https://api.podio.com";
 const APP_ID = process.env.PODIO_APP_ID;
 const APP_TOKEN = process.env.PODIO_APP_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
