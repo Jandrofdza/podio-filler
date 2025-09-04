@@ -3,7 +3,7 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-// --- Function to fetch a Podio token ---
+// --- Function to fetch a Podio token using App Auth ---
 async function getPodioToken() {
   const res = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
@@ -12,8 +12,6 @@ async function getPodioToken() {
       grant_type: "app",
       app_id: process.env.PODIO_APP_ID,
       app_token: process.env.PODIO_APP_TOKEN,
-      client_id: process.env.PODIO_CLIENT_ID,
-      client_secret: process.env.PODIO_CLIENT_SECRET,
     }),
   });
 
@@ -48,8 +46,6 @@ app.post("/podio-hook", async (req, res) => {
     });
     const files = await filesResp.json();
     console.log("Files for item:", item_id, files);
-
-    // Later: forward files to GPT / Supabase etc.
   } catch (err) {
     console.error("Error handling item:", err);
   }
