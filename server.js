@@ -1,6 +1,4 @@
 
-import express from "express";
-import bodyParser from "body-parser";
 
 const app = express();
 app.use(bodyParser.json());
@@ -24,15 +22,11 @@ app.post("/podio-hook", (req, res) => {
 }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Node filler listening on port ${PORT}`);
 });
 
 
 // --- FAST-ACK ROUTE (add once) ---
-import express from "express";
-import { fetchPodioFiles } from "./helpers/podio.js";
 
 const app = globalThis.app || express();         // reuse if you already created it
 app.use(express.json({ limit: "25mb" }));        // ensure JSON is parsed
@@ -69,16 +63,12 @@ export async function processItem({ item_id }) {
 
 // start server if not already started elsewhere
 if (!globalThis.__serverStarted) {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Filler listening on :${PORT}`));
   globalThis.__serverStarted = true;
 }
 globalThis.app = app;
 
 
 /* === Podio debug endpoint (non-invasive) === */
-import express from "express";
-const __podioDebugApp = (globalThis.app instanceof Function ? globalThis.app : null) || (typeof app !== "undefined" ? app : null);
 const __ensureApp = () => __podioDebugApp || (globalThis.app = (globalThis.app || express()));
 
 (async () => {
@@ -101,8 +91,6 @@ const __ensureApp = () => __podioDebugApp || (globalThis.app = (globalThis.app |
     });
 
     if (!globalThis.__serverStarted) {
-      const PORT = process.env.PORT || 3000;
-      _app.listen(PORT, () => console.log(`Filler listening on :${PORT}`));
       globalThis.__serverStarted = true;
     }
   } catch (e) {
