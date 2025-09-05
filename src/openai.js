@@ -1,25 +1,24 @@
 import OpenAI from "openai";
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export async function classifyWithFiles(files, prompt) {
-  const fileIds = [];
-  for (const f of files) {
-    const resp = await openai.files.create({
-      file: f.buffer,
-      purpose: "assistants"
-    });
-    fileIds.push(resp.id);
-  }
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-  const completion = await openai.chat.completions.create({
+// Export classifyInputs so server.js can use it
+export async function classifyInputs(text) {
+  const resp = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "Eres un clasificador aduanal experto en comercio exterior mexicano. Devuelve JSON con campos de Podio." },
-      { role: "user", content: prompt }
+      { role: "system", content: "Eres un clasificador aduanal experto en comercio exterior mexicano. Devuelve JSON con fracción, justificación, alternativas, notas, dudas, etc." },
+      { role: "user", content: text },
     ],
-    file_ids: fileIds,
-    response_format: { type: "json_object" }
+    response_format: { type: "json_object" },
   });
 
-  return JSON.parse(completion.choices[0].message.content);
+  try {
+    return JSON.parse(resp.choices[0].message.content);
+  } catch (err) {
+    console.error("❌ Failed to parse GPT response:", err);
+    return { error: "Invalid GPT output" };
+  }
 }
