@@ -6,17 +6,15 @@ app.use(bodyParser.json());
 
 async function getPodioToken() {
   const body = new URLSearchParams({
-    grant_type: "app",
-    app_id: process.env.PODIO_APP_ID,
-    app_token: process.env.PODIO_APP_TOKEN,
+    grant_type: "client_credentials",
+    client_id: process.env.PODIO_CLIENT_ID,
+    client_secret: process.env.PODIO_CLIENT_SECRET,
   });
 
   const resp = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
   });
 
   if (!resp.ok) {
@@ -24,8 +22,8 @@ async function getPodioToken() {
     throw new Error(`Failed to get Podio token: ${txt}`);
   }
 
-  const json = await resp.json();
-  return json.access_token;
+  const data = await resp.json();
+  return data.access_token;
 }
 
 app.post("/podio-hook", async (req, res) => {
