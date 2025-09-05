@@ -3,13 +3,24 @@ import express from "express";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ✅ Parse JSON and URL-encoded bodies
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware to capture raw body
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
+app.use(express.urlencoded({
+  extended: true,
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 
 app.post("/podio-hook", async (req, res) => {
   console.log("=== Incoming Podio webhook ===");
-  console.log(req.body);
+  console.log("Headers:", req.headers);
+  console.log("Raw body:", req.rawBody);
+  console.log("Parsed body:", req.body);
 
   const body = req.body;
 
