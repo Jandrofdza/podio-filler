@@ -1,3 +1,13 @@
+import fs from "fs";
+
+try {
+  console.log("📂 Checking src directory:", fs.readdirSync(new URL("./", import.meta.url)));
+  console.log("📂 Checking src/pdf.js exists:", fs.existsSync(new URL("./pdf.js", import.meta.url)));
+} catch (err) {
+  console.error("❌ FS check failed:", err);
+}
+
+
 import express from "express";
 import fetch from "node-fetch";
 import { classifyInputs } from "./openai.js";
