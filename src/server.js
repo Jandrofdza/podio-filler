@@ -11,8 +11,12 @@ async function getPodioFiles(itemId) {
   const resp = await fetch(`https://api.podio.com/item/${itemId}/files/`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` }
   });
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch files for item ${itemId}: ${resp.status} ${resp.statusText}`);
+  }
   const data = await resp.json();
-  return data.map(f => f.link);
+  // return IDs instead of links
+  return data.map(f => f.file_id);
 }
 
 async function fetchPodioFileBuffer(fileId) {
@@ -29,6 +33,7 @@ async function fetchPodioFileBuffer(fileId) {
 
   return Buffer.from(await resp.arrayBuffer());
 }
+
 
 
 app.post("/podio-hook", async (req, res) => {
