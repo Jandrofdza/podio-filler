@@ -3,18 +3,27 @@ import express from "express";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware to capture raw body
-app.use(express.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf.toString();
-  }
-}));
-app.use(express.urlencoded({
-  extended: true,
-  verify: (req, res, buf) => {
-    req.rawBody = buf.toString();
-  }
-}));
+// Capture raw body
+app.use((req, res, next) => {
+  let data = "";
+  req.on("data", chunk => { data += chunk });
+  req.on("end", () => {
+    req.rawBody = data;
+    try {
+      if (req.headers["content-type"]?.includes("application/json")) {
+        req.body = JSON.parse(data || "{}");
+      } else if (req.headers["content-type"]?.includes("application/x-www-form-urlencoded")) {
+        req.body = Object.fromEntries(new URLSearchParams(data));
+      } else {
+        req.body = {};
+      }
+    } catch (e) {
+      console.error("❌ Failed to parse body:", e);
+      req.body = {};
+    }
+    next();
+  });
+});
 
 app.post("/podio-hook", async (req, res) => {
   console.log("=== Incoming Podio webhook ===");
@@ -22,23 +31,21 @@ app.post("/podio-hook", async (req, res) => {
   console.log("Raw body:", req.rawBody);
   console.log("Parsed body:", req.body);
 
-  const body = req.body;
+  const body = req.body || {};
 
-  if (!body) {
-    console.error("No body received");
-    return res.status(400).send("Missing body");
-  }
-
-  // Handle webhook verification
   if (body.type === "hook.verify") {
-    console.log("Verification code:", body.code);
+    console.log("✅ Verification challenge:", body.code);
     return res.status(200).send(body.code);
   }
 
-  // Handle item.create
   if (body.type === "item.create") {
-    console.log("Processing item.create for:", body.item_id);
-    // Forwarding or additional logic goes here
+    const itemId = body.item_id || null;
+    if (!itemId) {
+      console.error("❌ Missing item_id in payload");
+      return res.status(400).send("Missing item_id");
+    }
+    console.log("✅ Processing item.create for item_id:", itemId);
+    // forward to filler or further logic here
   }
 
   return res.status(200).send("ok");
