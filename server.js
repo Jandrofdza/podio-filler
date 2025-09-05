@@ -1,6 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
-import { extractPdfText, extractDocxText } from "./sr./src/pdf.js";
+import { extractPdfText, extractDocxText } from "././src/pdf.js";
 
 import { classifyInputs } from "./src/openai.js";
 
