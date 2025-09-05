@@ -15,6 +15,7 @@ async function fetchPodioItem(itemId) {
   const resp = await fetch(`https://api.podio.com/item/${itemId}`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
   });
+  console.log("📥 File fetch response:", resp.status, resp.statusText);
   if (!resp.ok) throw new Error(`Failed to fetch Podio item: ${resp.status}`);
   return await resp.json();
 }
@@ -23,6 +24,7 @@ async function fetchPodioFileBuffer(fileId) {
   const resp = await fetch(`https://api.podio.com/file/${fileId}/download`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
   });
+  console.log("📥 File fetch response:", resp.status, resp.statusText);
   if (!resp.ok) throw new Error(`Failed to download file ${fileId}`);
   return Buffer.from(await resp.arrayBuffer());
 }
@@ -52,6 +54,7 @@ async function updatePodioItem(itemId, data) {
     body: JSON.stringify(body),
   });
 
+  console.log("📥 File fetch response:", resp.status, resp.statusText);
   if (!resp.ok) {
     const errText = await resp.text();
     throw new Error(`Failed to update Podio item: ${resp.status} ${errText}`);
