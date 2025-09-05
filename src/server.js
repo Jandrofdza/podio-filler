@@ -1,54 +1,36 @@
-import http from "http";
+import express from "express";
+
+const app = express();
+app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
 
-const server = http.createServer((req, res) => {
+app.post("/podio-hook", async (req, res) => {
   console.log("=== Incoming Podio webhook ===");
-  console.log("method:", req.method, "url:", req.url);
-  console.log("Headers:", req.headers);
+  console.log("Body:", req.body);
 
-  let data = "";
-  req.on("data", chunk => {
-    data += chunk;
-  });
+  const { item_id, req_id } = req.body || {};
 
-  req.on("end", () => {
-    console.log("Raw body:", data);
+  if (!item_id) {
+    console.warn("⚠️ Missing item_id in request body");
+    return res.status(400).json({ error: "Missing item_id" });
+  }
 
-    let body = {};
-    try {
-      body = JSON.parse(data);
-    } catch {
-      try {
-        body = Object.fromEntries(new URLSearchParams(data));
-      } catch {
-        body = { raw: data };
-      }
-    }
+  try {
+    console.log(`Processing item_id=${item_id}, req_id=${req_id || "none"}`);
 
-    console.log("Parsed body:", body);
+    // 👉 Place GPT/Podio field-filling logic here
+    // Example:
+    // await processPodioItem(item_id);
 
-    if (body.type === "hook.verify") {
-      console.log("✅ Verification challenge:", body.code);
-      res.writeHead(200, { "Content-Type": "text/plain" });
-      return res.end(body.code);
-    }
-
-    if (body.type === "item.create") {
-      const itemId = body.item_id;
-      if (!itemId) {
-        console.error("❌ Missing item_id, payload was:", body);
-        res.writeHead(400, { "Content-Type": "text/plain" });
-        return res.end("Missing item_id");
-      }
-      console.log("✅ Processing item.create for item_id:", itemId);
-    }
-
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("ok");
-  });
+    res.json({ status: "ok", item_id });
+  } catch (err) {
+    console.error("❌ Error handling Podio item:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Raw HTTP server listening on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`🚀 Node filler listening on port ${PORT}`);
 });
+
