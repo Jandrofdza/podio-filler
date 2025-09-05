@@ -15,6 +15,22 @@ async function getPodioFiles(itemId) {
   return data.map(f => f.link);
 }
 
+async function fetchPodioFileBuffer(fileId) {
+  const url = `https://api.podio.com/file/${fileId}/raw`;
+  console.log("📂 Downloading from:", url);
+
+  const resp = await fetch(url, {
+    headers: { Authorization: `OAuth2 ${process.env.PODIO_TOKEN}` }
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Failed to download file ${fileId}: ${resp.status} ${resp.statusText}`);
+  }
+
+  return Buffer.from(await resp.arrayBuffer());
+}
+
+
 app.post("/podio-hook", async (req, res) => {
   try {
     const { item_id } = req.body;
