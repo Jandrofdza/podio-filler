@@ -3,5 +3,5 @@ services:
     name: podio-filler
     env: node
     plan: free
-    buildCommand: "npm ci --omit=dev"
-    startCommand: "node server.js"
+    buildCommand: "npm install --omit=dev"
+    startCommand: "npm start"
