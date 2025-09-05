@@ -3,7 +3,7 @@ import express from "express";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Capture raw body
+// ✅ Middleware: capture raw body always
 app.use((req, res, next) => {
   let data = "";
   req.on("data", chunk => { data += chunk });
@@ -17,35 +17,34 @@ app.use((req, res, next) => {
       } else {
         req.body = {};
       }
-    } catch (e) {
-      console.error("❌ Failed to parse body:", e);
+    } catch (err) {
+      console.error("❌ Body parse error:", err);
       req.body = {};
     }
     next();
   });
 });
 
-app.post("/podio-hook", async (req, res) => {
+app.post("/podio-hook", (req, res) => {
   console.log("=== Incoming Podio webhook ===");
   console.log("Headers:", req.headers);
   console.log("Raw body:", req.rawBody);
   console.log("Parsed body:", req.body);
 
-  const body = req.body || {};
+  const type = req.body?.type;
+  const itemId = req.body?.item_id;
 
-  if (body.type === "hook.verify") {
-    console.log("✅ Verification challenge:", body.code);
-    return res.status(200).send(body.code);
+  if (type === "hook.verify") {
+    console.log("✅ Verification challenge:", req.body.code);
+    return res.status(200).send(req.body.code);
   }
 
-  if (body.type === "item.create") {
-    const itemId = body.item_id || null;
+  if (type === "item.create") {
     if (!itemId) {
-      console.error("❌ Missing item_id in payload");
+      console.error("❌ Missing item_id, payload was:", req.body);
       return res.status(400).send("Missing item_id");
     }
     console.log("✅ Processing item.create for item_id:", itemId);
-    // forward to filler or further logic here
   }
 
   return res.status(200).send("ok");
