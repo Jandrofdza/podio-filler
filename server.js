@@ -14,7 +14,9 @@ async function getPodioToken() {
   const resp = await fetch("https://api.podio.com/oauth/token", {
     method: "POST",
     body,
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
   });
 
   if (!resp.ok) {
