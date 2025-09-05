@@ -1,6 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
-import pkg from "pdf-parse";   // ✅ fix: safe import
+import pkg from "pdf-parse";
 const pdf = pkg;
 
 import { classifyInputs } from "./src/openai.js";
@@ -12,7 +12,6 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Fetch Podio item
 async function fetchPodioItem(itemId) {
   const resp = await fetch(`https://api.podio.com/item/${itemId}`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
@@ -21,7 +20,6 @@ async function fetchPodioItem(itemId) {
   return await resp.json();
 }
 
-// Download Podio file as buffer
 async function fetchPodioFileBuffer(fileId) {
   const resp = await fetch(`https://api.podio.com/file/${fileId}/download`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
@@ -30,7 +28,6 @@ async function fetchPodioFileBuffer(fileId) {
   return Buffer.from(await resp.arrayBuffer());
 }
 
-// Update Podio item with GPT results
 async function updatePodioItem(itemId, data) {
   const body = {
     fields: {
@@ -40,9 +37,7 @@ async function updatePodioItem(itemId, data) {
       "fraccion-2": data.fraccion || "",
       "justificacion-legal": data.justificacion || "",
       arbol: (data.arbol || []).join(" > "),
-      analisis: (data.alternativas || [])
-        .map(a => `${a.fraccion}: ${a.motivo}`)
-        .join(" | "),
+      analisis: (data.alternativas || []).map(a => `${a.fraccion}: ${a.motivo}`).join(" | "),
       "dudas-para-el-cliente": data.dudas_cliente || "",
       regulacion: data.regulacion || "",
       "notas-del-clasificador": data.notas_clasificador || "",
@@ -66,10 +61,8 @@ async function updatePodioItem(itemId, data) {
   return await resp.json();
 }
 
-// Process Podio item through GPT
 async function processItem(itemId) {
   console.log("🔎 Processing item:", itemId);
-
   const item = await fetchPodioItem(itemId);
 
   const files = item.files || [];
@@ -78,12 +71,12 @@ async function processItem(itemId) {
 
   for (const f of files) {
     if (f.mimetype.includes("image")) {
-      console.log("🖼️ Image found, skipping for now:", f.name);
+      console.log("🖼️ Skipping image:", f.name);
     } else if (f.mimetype.includes("pdf")) {
       const pdfBuffer = await fetchPodioFileBuffer(f.file_id);
-      const parsed = await pdf(pdfBuffer);
+      const parsed = await pdf(pdfBuffer); // ✅ Only buffer here
       texts.push(parsed.text);
-      console.log("📄 Extracted PDF text (first 300 chars):", parsed.text.slice(0, 300));
+      console.log("📄 Extracted PDF text (300 chars):", parsed.text.slice(0, 300));
     }
   }
 
@@ -94,7 +87,6 @@ async function processItem(itemId) {
   console.log("📌 Podio item updated:", itemId);
 }
 
-// Webhook endpoint
 app.post("/podio-hook", async (req, res) => {
   const body = req.body;
 
@@ -106,8 +98,7 @@ app.post("/podio-hook", async (req, res) => {
   if (body.type === "item.create") {
     const itemId = body.item_id;
     console.log("🆕 New Podio item:", itemId);
-
-    processItem(itemId).catch((err) => console.error("❌ Error:", err));
+    processItem(itemId).catch(err => console.error("❌ Error:", err));
     return res.json({ status: "queued", itemId });
   }
 
@@ -115,6 +106,4 @@ app.post("/podio-hook", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log("🚀 Server listening on port " + PORT);
-});
+app.listen(PORT, () => console.log("🚀 Server listening on port " + PORT));
