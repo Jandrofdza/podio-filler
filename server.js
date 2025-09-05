@@ -1,6 +1,8 @@
 import express from "express";
 import fetch from "node-fetch";
-import pdf from "pdf-parse";
+import pkg from "pdf-parse";   // ✅ fix: safe import
+const pdf = pkg;
+
 import { classifyInputs } from "./src/openai.js";
 
 const PODIO_TOKEN = process.env.PODIO_TOKEN;
@@ -34,7 +36,6 @@ async function updatePodioItem(itemId, data) {
     fields: {
       titulo: data.nombre_corto || "",
       "descripcion-del-producto": data.descripcion || "",
-      // requ-id skipped (needs valid Podio item reference)
       fecha: data.fecha ? { start: data.fecha, end: data.fecha } : null,
       "fraccion-2": data.fraccion || "",
       "justificacion-legal": data.justificacion || "",
@@ -77,13 +78,12 @@ async function processItem(itemId) {
 
   for (const f of files) {
     if (f.mimetype.includes("image")) {
-      // TODO: convert to base64 if you want GPT to see images
       console.log("🖼️ Image found, skipping for now:", f.name);
     } else if (f.mimetype.includes("pdf")) {
       const pdfBuffer = await fetchPodioFileBuffer(f.file_id);
       const parsed = await pdf(pdfBuffer);
       texts.push(parsed.text);
-      console.log("📄 Extracted PDF text length:", parsed.text.length);
+      console.log("📄 Extracted PDF text (first 300 chars):", parsed.text.slice(0, 300));
     }
   }
 
