@@ -9,7 +9,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Helper: fetch Podio item + attachments
+// Fetch Podio item
 async function fetchPodioItem(itemId) {
   const resp = await fetch(`https://api.podio.com/item/${itemId}`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
@@ -18,7 +18,7 @@ async function fetchPodioItem(itemId) {
   return await resp.json();
 }
 
-// Helper: fetch file download URL from Podio
+// Fetch Podio file download URL
 async function fetchPodioFile(fileId) {
   const urlResp = await fetch(`https://api.podio.com/file/${fileId}`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
@@ -27,14 +27,45 @@ async function fetchPodioFile(fileId) {
   return fileMeta.link;
 }
 
-// Process an item
+// Update Podio item with GPT results
+async function updatePodioItem(itemId, data) {
+  const resp = await fetch(`https://api.podio.com/item/${itemId}/value`, {
+    method: "PUT",
+    headers: {
+      Authorization: `OAuth2 ${PODIO_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        titulo: data.nombre_corto,
+        "descripcion-del-producto": data.descripcion,
+        "requ-id": data.requ_id,
+        fecha: data.fecha,
+        "fraccion-2": data.fraccion,
+        "justificacion-legal": data.justificacion,
+        arbol: (data.arbol || []).join(" > "),
+        analisis: (data.alternativas || [])
+          .map(a => `${a.fraccion}: ${a.motivo}`)
+          .join(" | "),
+        "dudas-para-el-cliente": data.dudas_cliente,
+        regulacion: data.regulacion,
+        "notas-del-clasificador": data.notas_clasificador,
+      },
+    }),
+  });
+
+  if (!resp.ok) throw new Error(`Failed to update Podio item: ${resp.status}`);
+  return await resp.json();
+}
+
+// Process Podio item through GPT
 async function processItem(itemId) {
   console.log("🔎 Processing item:", itemId);
 
   // 1. Fetch Podio item
   const item = await fetchPodioItem(itemId);
 
-  // 2. Collect attachments
+  // 2. Gather files
   const files = item.files || [];
   const imageUrls = [];
   const texts = [];
@@ -48,13 +79,13 @@ async function processItem(itemId) {
     }
   }
 
-  // 3. Run GPT classifier
+  // 3. Run GPT
   const result = await classifyInputs({ imageUrls, texts }, OPENAI_API_KEY);
-
   console.log("✅ GPT result:", result);
 
-  // 4. TODO: update Podio fields with result
-  // (depends on your field external_ids)
+  // 4. Update Podio
+  await updatePodioItem(itemId, result);
+  console.log("📌 Podio item updated:", itemId);
 }
 
 // Webhook endpoint
@@ -70,9 +101,7 @@ app.post("/podio-hook", async (req, res) => {
     const itemId = body.item_id;
     console.log("🆕 New Podio item:", itemId);
 
-    // Fire and forget — don’t block webhook response
     processItem(itemId).catch((err) => console.error("❌ Error:", err));
-
     return res.json({ status: "queued", itemId });
   }
 
@@ -80,4 +109,6 @@ app.post("/podio-hook", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Server listening on port " + PORT));
+app.listen(PORT, () => {
+  console.log("🚀 Server listening on port " + PORT);
+});
