@@ -4,6 +4,7 @@ const PORT = process.env.PORT || 10000;
 
 const server = http.createServer((req, res) => {
   console.log("=== Incoming Podio webhook ===");
+  console.log("method:", req.method, "url:", req.url);
   console.log("Headers:", req.headers);
 
   let data = "";
