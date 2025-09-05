@@ -1,5 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
+import pdf from "pdf-parse";
 import { classifyInputs } from "./src/openai.js";
 
 const PODIO_TOKEN = process.env.PODIO_TOKEN;
@@ -18,13 +19,13 @@ async function fetchPodioItem(itemId) {
   return await resp.json();
 }
 
-// Fetch Podio file download URL
-async function fetchPodioFile(fileId) {
-  const urlResp = await fetch(`https://api.podio.com/file/${fileId}`, {
+// Download Podio file as buffer
+async function fetchPodioFileBuffer(fileId) {
+  const resp = await fetch(`https://api.podio.com/file/${fileId}/download`, {
     headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
   });
-  const fileMeta = await urlResp.json();
-  return fileMeta.link;
+  if (!resp.ok) throw new Error(`Failed to download file ${fileId}`);
+  return Buffer.from(await resp.arrayBuffer());
 }
 
 // Update Podio item with GPT results
@@ -33,7 +34,7 @@ async function updatePodioItem(itemId, data) {
     fields: {
       titulo: data.nombre_corto || "",
       "descripcion-del-producto": data.descripcion || "",
-      // Skip requ-id for now (needs valid Podio item_id reference)
+      // requ-id skipped (needs valid Podio item reference)
       fecha: data.fecha ? { start: data.fecha, end: data.fecha } : null,
       "fraccion-2": data.fraccion || "",
       "justificacion-legal": data.justificacion || "",
@@ -68,28 +69,27 @@ async function updatePodioItem(itemId, data) {
 async function processItem(itemId) {
   console.log("🔎 Processing item:", itemId);
 
-  // 1. Fetch Podio item
   const item = await fetchPodioItem(itemId);
 
-  // 2. Gather files
   const files = item.files || [];
   const imageUrls = [];
   const texts = [];
 
   for (const f of files) {
-    const downloadUrl = await fetchPodioFile(f.file_id);
     if (f.mimetype.includes("image")) {
-      imageUrls.push(downloadUrl);
+      // TODO: convert to base64 if you want GPT to see images
+      console.log("🖼️ Image found, skipping for now:", f.name);
     } else if (f.mimetype.includes("pdf")) {
-      texts.push("PDF file: " + downloadUrl);
+      const pdfBuffer = await fetchPodioFileBuffer(f.file_id);
+      const parsed = await pdf(pdfBuffer);
+      texts.push(parsed.text);
+      console.log("📄 Extracted PDF text length:", parsed.text.length);
     }
   }
 
-  // 3. Run GPT
   const result = await classifyInputs({ imageUrls, texts }, OPENAI_API_KEY);
   console.log("✅ GPT result:", result);
 
-  // 4. Update Podio
   await updatePodioItem(itemId, result);
   console.log("📌 Podio item updated:", itemId);
 }
