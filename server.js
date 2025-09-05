@@ -44,7 +44,7 @@ async function processItem(itemId) {
     if (f.mimetype.includes("image")) {
       imageUrls.push(downloadUrl);
     } else if (f.mimetype.includes("pdf")) {
-      texts.push(\`PDF file: \${downloadUrl}\`);
+      texts.push("PDF file: " + downloadUrl);
     }
   }
 
