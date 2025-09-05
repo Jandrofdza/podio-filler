@@ -34,3 +34,13 @@ app.listen(PORT, () => {
   console.log(`🚀 Node filler listening on port ${PORT}`);
 });
 
+
+// 🔽 Helper: fetch Podio file links for a given item
+async function getPodioFiles(itemId) {
+  const resp = await fetch(`https://api.podio.com/item/${itemId}/files/`, {
+    headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` },
+  });
+  if (!resp.ok) throw new Error(`Podio files fetch failed: ${resp.status}`);
+  const files = await resp.json();
+  return files.map(f => f.link);
+}
