@@ -29,32 +29,38 @@ async function fetchPodioFile(fileId) {
 
 // Update Podio item with GPT results
 async function updatePodioItem(itemId, data) {
+  const body = {
+    fields: {
+      titulo: data.nombre_corto || "",
+      "descripcion-del-producto": data.descripcion || "",
+      // Skip requ-id for now (needs valid Podio item_id reference)
+      fecha: data.fecha ? { start: data.fecha, end: data.fecha } : null,
+      "fraccion-2": data.fraccion || "",
+      "justificacion-legal": data.justificacion || "",
+      arbol: (data.arbol || []).join(" > "),
+      analisis: (data.alternativas || [])
+        .map(a => `${a.fraccion}: ${a.motivo}`)
+        .join(" | "),
+      "dudas-para-el-cliente": data.dudas_cliente || "",
+      regulacion: data.regulacion || "",
+      "notas-del-clasificador": data.notas_clasificador || "",
+    },
+  };
+
   const resp = await fetch(`https://api.podio.com/item/${itemId}/value`, {
     method: "PUT",
     headers: {
       Authorization: `OAuth2 ${PODIO_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      fields: {
-        titulo: data.nombre_corto,
-        "descripcion-del-producto": data.descripcion,
-        "requ-id": data.requ_id,
-        fecha: data.fecha,
-        "fraccion-2": data.fraccion,
-        "justificacion-legal": data.justificacion,
-        arbol: (data.arbol || []).join(" > "),
-        analisis: (data.alternativas || [])
-          .map(a => `${a.fraccion}: ${a.motivo}`)
-          .join(" | "),
-        "dudas-para-el-cliente": data.dudas_cliente,
-        regulacion: data.regulacion,
-        "notas-del-clasificador": data.notas_clasificador,
-      },
-    }),
+    body: JSON.stringify(body),
   });
 
-  if (!resp.ok) throw new Error(`Failed to update Podio item: ${resp.status}`);
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Failed to update Podio item: ${resp.status} ${errText}`);
+  }
+
   return await resp.json();
 }
 
