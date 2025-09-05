@@ -10,7 +10,8 @@ export async function classifyInputs(text) {
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: "Eres un clasificador aduanal experto en comercio exterior mexicano. Devuelve JSON con fracción, justificación, alternativas, notas, dudas, etc." },
-      { role: "user", content: text },
+      { role: "user", content: [{ type: "text", text: prompt }] }
+
     ],
     response_format: { type: "json_object" },
   });
