@@ -1,6 +1,6 @@
 import express from "express";
 import fetch from "node-fetch";
-import { classifyWithFiles } from "./openai.js";
+import { classifyInputs } from "./openai.js";
 import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
 
 const app = express();
