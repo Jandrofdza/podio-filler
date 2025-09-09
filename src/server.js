@@ -38,24 +38,22 @@ app.post("/podio-hook", async (req, res) => {
     // Step 1. Fetch files for the item
     const files = await getPodioFiles(item_id, token);
 
-    // Step 2. Download file buffers
-    const buffers = [];
-    for (const f of files) {
-      try {
-        const buf = await fetchPodioFileBuffer(f.file_id);
-        if (buf) {
-          buffers.push({ ...f, buffer: buf });
-        }
-      } catch (err) {
-        console.error(`⚠️ Failed to fetch file ${f.file_id}:`, err.message);
-      }
+// Step 2. Download file buffers
+const buffers = [];
+for (const f of files) {
+  try {
+    const buf = await fetchPodioFileBuffer(f.file_id);
+    if (buf) {
+      buffers.push({ ...f, buffer: buf });
     }
-
+  } catch (err) {
+    console.error(`⚠️ Failed to fetch file ${f.file_id}:`, err.message);
+  }
+}
 
 // Step 3. Classify each buffer
 const results = [];
 for (const f of buffers) {
-  // convert buffer to text
   const text = f.buffer.toString("utf-8");
 
   // 🚨 truncate so GPT only gets the first 8000 characters
@@ -69,6 +67,15 @@ for (const f of buffers) {
 console.log("✅ Classification results:", results);
 
 res.json({ status: "ok", item_id, req_id, results });
+} catch (err) {
+  console.error("❌ Error processing Podio hook:", err);
+  res.status(500).json({ error: err.message });
+}
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
 
 // Start server
