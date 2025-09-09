@@ -51,26 +51,25 @@ app.post("/podio-hook", async (req, res) => {
       }
     }
 
-    // Step 3. Classify each buffer
-    const results = [];
-    for (const f of buffers) {
-const text = fileBuffer.toString("utf-8");
 
-// 🚨 truncate so GPT only gets the first 8000 characters
-	const snippet = text.slice(0, 8000);
-	console.log(`Sending ${snippet.length} chars to OpenAI (truncated)`);
-	const classification = await classifyInputs(snippet);
-      results.push({ file: f.name, classification });
-    }
+// Step 3. Classify each buffer
+const results = [];
+for (const f of buffers) {
+  // convert buffer to text
+  const text = f.buffer.toString("utf-8");
 
-    console.log("✅ Classification results:", results);
+  // 🚨 truncate so GPT only gets the first 8000 characters
+  const snippet = text.slice(0, 8000);
+  console.log(`Sending ${snippet.length} chars to OpenAI (truncated)`);
 
-    res.json({ status: "ok", item_id, req_id, results });
-  } catch (err) {
-    console.error("❌ Error processing Podio hook:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+  const classification = await classifyInputs(snippet);
+  results.push({ file: f.name, classification });
+}
+
+console.log("✅ Classification results:", results);
+
+res.json({ status: "ok", item_id, req_id, results });
+
 
 // Start server
 const PORT = process.env.PORT || 3000;
