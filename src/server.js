@@ -1,17 +1,20 @@
 import express from "express";
 import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
-import { classifyInputs } from "./openai.js"; // or classifyWithFiles if you add it
-import { getPodioFiles } from "./podio.js";   // helper to list files from a Podio item
+import { classifyInputs } from "./openai.js";   // or classifyWithFiles if you later add it
+import { getPodioFiles } from "./podio.js";     // wrapper we added in podio.js
 
 const app = express();
-app.use(express.json()); // ✅ parse JSON bodies
 
-// Health check
+// ✅ Parse both JSON and form-encoded bodies (Podio can send either)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check route
 app.get("/healthz", (req, res) => {
   res.status(200).send("ok");
 });
 
-// Podio webhook handler
+// Podio webhook route
 app.post("/podio-hook", async (req, res) => {
   console.log("📦 Incoming body:", req.body);
 
@@ -24,22 +27,34 @@ app.post("/podio-hook", async (req, res) => {
   try {
     console.log(`🔍 Processing Podio item: ${item_id}`);
 
-    // Step 1. Get files attached to the item
-    const files = await getPodioFiles(item_id);
+    // ✅ Explicitly grab token from env
+    const token = process.env.PODIO_TOKEN;
+    if (!token) {
+      console.error("❌ PODIO_TOKEN is missing from environment!");
+      return res.status(500).json({ error: "No Podio token available" });
+    }
+    console.log("🔑 PODIO_TOKEN loaded (first 10 chars):", token.slice(0, 10));
 
-    // Step 2. Download each file
+    // Step 1. Fetch files for the item
+    const files = await getPodioFiles(item_id, token);
+
+    // Step 2. Download file buffers
     const buffers = [];
     for (const f of files) {
-      const buf = await fetchPodioFileBuffer(f.file_id);
-      if (buf) {
-        buffers.push({ ...f, buffer: buf });
+      try {
+        const buf = await fetchPodioFileBuffer(f.file_id);
+        if (buf) {
+          buffers.push({ ...f, buffer: buf });
+        }
+      } catch (err) {
+        console.error(`⚠️ Failed to fetch file ${f.file_id}:`, err.message);
       }
     }
 
-    // Step 3. Run classification (change classifyInputs -> classifyWithFiles if you add wrapper)
+    // Step 3. Classify each buffer
     const results = [];
     for (const f of buffers) {
-      const text = f.buffer.toString("utf-8"); // simplification, PDFs may need extractPdfText
+      const text = f.buffer.toString("utf-8"); // NOTE: PDFs may need extractPdfText
       const classification = await classifyInputs(text);
       results.push({ file: f.name, classification });
     }
