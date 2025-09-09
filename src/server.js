@@ -1,6 +1,7 @@
 import express from "express";
 import fetch from "node-fetch";
 import { classifyWithFiles } from "./openai.js";
+import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
 
 const app = express();
 app.use(express.json());
@@ -18,22 +19,6 @@ async function getPodioFiles(itemId) {
   // return IDs instead of links
   return data.map(f => f.file_id);
 }
-
-async function fetchPodioFileBuffer(fileId) {
-  const url = `https://api.podio.com/file/${fileId}/raw`;
-  console.log("📂 Downloading from:", url);
-
-  const resp = await fetch(url, {
-    headers: { Authorization: `OAuth2 ${process.env.PODIO_TOKEN}` }
-  });
-
-  if (!resp.ok) {
-    throw new Error(`Failed to download file ${fileId}: ${resp.status} ${resp.statusText}`);
-  }
-
-  return Buffer.from(await resp.arrayBuffer());
-}
-
 
 
 app.post("/podio-hook", async (req, res) => {
