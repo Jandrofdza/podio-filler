@@ -1,62 +1,61 @@
 import express from "express";
-import fetch from "node-fetch";
-import { classifyInputs } from "./openai.js";
 import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
+import { classifyInputs } from "./openai.js"; // or classifyWithFiles if you add it
+import { getPodioFiles } from "./podio.js";   // helper to list files from a Podio item
 
 const app = express();
-app.use(express.json());
+app.use(express.json()); // ✅ parse JSON bodies
 
-const PODIO_TOKEN = process.env.PODIO_TOKEN;
+// Health check
+app.get("/healthz", (req, res) => {
+  res.status(200).send("ok");
+});
 
-async function getPodioFiles(itemId) {
-  const resp = await fetch(`https://api.podio.com/item/${itemId}/files/`, {
-    headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` }
-  });
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch files for item ${itemId}: ${resp.status} ${resp.statusText}`);
-  }
-  const data = await resp.json();
-  // return IDs instead of links
-  return data.map(f => f.file_id);
-}
-
-
+// Podio webhook handler
 app.post("/podio-hook", async (req, res) => {
+  console.log("📦 Incoming body:", req.body);
+
+  const { item_id, req_id } = req.body || {};
+  if (!item_id) {
+    console.error("❌ Missing item_id in request body");
+    return res.status(400).json({ error: "Missing item_id" });
+  }
+
   try {
-    const { item_id } = req.body;
-    if (!item_id) return res.status(400).json({ error: "Missing item_id" });
+    console.log(`🔍 Processing Podio item: ${item_id}`);
 
-    const fileLinks = await getPodioFiles(item_id);
+    // Step 1. Get files attached to the item
+    const files = await getPodioFiles(item_id);
 
-    const files = [];
-    for (const link of fileLinks) {
-      const resp = await fetch(link, { headers: { Authorization: `OAuth2 ${PODIO_TOKEN}` } });
-      const buffer = Buffer.from(await resp.arrayBuffer());
-      files.push({ buffer, name: "podio-file" });
+    // Step 2. Download each file
+    const buffers = [];
+    for (const f of files) {
+      const buf = await fetchPodioFileBuffer(f.file_id);
+      if (buf) {
+        buffers.push({ ...f, buffer: buf });
+      }
     }
 
-    const prompt = "Clasifica este producto con fracción arancelaria TIGIE.";
-    const result = await classifyWithFiles(files, prompt);
+    // Step 3. Run classification (change classifyInputs -> classifyWithFiles if you add wrapper)
+    const results = [];
+    for (const f of buffers) {
+      const text = f.buffer.toString("utf-8"); // simplification, PDFs may need extractPdfText
+      const classification = await classifyInputs(text);
+      results.push({ file: f.name, classification });
+    }
 
-    // 🔥 Push result back to Podio
-    await fetch(`https://api.podio.com/item/${item_id}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `OAuth2 ${PODIO_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ fields: result })
-    });
+    console.log("✅ Classification results:", results);
 
-    console.log("✅ Updated Podio with:", result);
-    res.json({ ok: true, result });
-
+    res.json({ status: "ok", item_id, req_id, results });
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error("❌ Error processing Podio hook:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(process.env.PORT || 10000, () =>
-  console.log(`🚀 Server running on ${process.env.PORT || 10000}`)
-);
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
