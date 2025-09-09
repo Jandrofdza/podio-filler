@@ -85,3 +85,9 @@ export async function setItemValues(itemId, values, token) {
     throw new Error('update values -> ' + statusCode + ' ' + text);
   }
 }
+
+export async function getPodioFiles(itemId, token) {
+  const item = await getItem(itemId, token);
+  return getItemFiles(item);
+}
+
