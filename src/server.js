@@ -3,6 +3,7 @@ import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
 import { classifyInputs } from "./openai.js";   // or classifyWithFiles if you later add it
 import { getPodioFiles } from "./podio.js";     // wrapper we added in podio.js
 
+const PORT = process.env.PORT || 10000;
 const app = express();
 
 // ✅ Parse both JSON and form-encoded bodies (Podio can send either)
