@@ -54,8 +54,9 @@ app.post("/podio-hook", async (req, res) => {
     // Step 3. Classify each buffer
     const results = [];
     for (const f of buffers) {
-      const text = f.buffer.toString("utf-8"); // NOTE: PDFs may need extractPdfText
-      const classification = await classifyInputs(text);
+	const rawText = f.buffer.toString("utf-8");
+	const snippet = rawText.slice(0, 8000);
+	const classification = await classifyInputs(snippet);
       results.push({ file: f.name, classification });
     }
 
