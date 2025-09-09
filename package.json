@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "postinstall": "rm -rf node_modules/pdf-parse/test",
-    "start": "node server.js",
+    "start": "node src/server.js",
     "run": "node src/index.js run",
     "files": "node src/index.js files",
     "auth": "node src/index.js auth"
