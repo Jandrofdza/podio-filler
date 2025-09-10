@@ -1,11 +1,9 @@
 import express from "express";
 import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
 import { classifyInputs } from "./openai.js";   // or classifyWithFiles if you later add it
-import { getPodioFiles } from "./podio.js";     // wrapper we added in podio.js
+import { getPodioFiles, setItemValues } from "./podio.js";     // wrapper we added in podio.js
 import { getPodioAccessToken } from "./podioAuth.js";
-import { extractPdfText } from "./extractPdfText.js";  // ✅ NEW import
-import { setItemValues } from "./podio.js";
-
+import { extractPdfText } from "./extractPdfText.js";  // ✅ PDF extractor
 
 const PORT = process.env.PORT || 10000;
 const app = express();
@@ -78,17 +76,23 @@ app.post("/podio-hook", async (req, res) => {
         }
 
         console.log("✅ Classification results:", results);
+
         // ✅ Step 4. Update Podio fields with the classification
         if (results.length > 0) {
             const first = results[0].classification;
 
             const values = {
-                "nombre-corto": results[0].file,  // map to your Podio field IDs or external IDs
-                "fraccion": first.fraccion,
-                "justificacion": first.justificacion,
-                "alternativas": first.alternativas?.join("\n") || "",
-                "notas": first.notas || "",
-                "dudas": first.dudas || "",
+                "titulo": results[0].file,  // Nombre corto
+                "descripcion-del-producto": first.descripcion || "",
+                "fraccion-2": first.fraccion || "",
+                "justificacion-legal": first.justificacion || "",
+                "analisis": Array.isArray(first.alternativas)
+                    ? first.alternativas.join("\n")
+                    : (first.alternativas || ""),
+                "notas-del-clasificador": first.notas || "",
+                "regulacion": first.regulacion || "",
+                "arbol": first.arbol || "",
+                "dudas-para-el-cliente": first.dudas || ""
             };
 
             try {
@@ -98,7 +102,6 @@ app.post("/podio-hook", async (req, res) => {
                 console.error("❌ Failed to update Podio fields:", updateErr.message);
             }
         }
-
 
         res.json({ status: "ok", item_id, req_id, results });
     } catch (err) {
