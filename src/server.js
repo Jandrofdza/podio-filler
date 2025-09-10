@@ -4,6 +4,8 @@ import { classifyInputs } from "./openai.js";   // or classifyWithFiles if you l
 import { getPodioFiles } from "./podio.js";     // wrapper we added in podio.js
 import { getPodioAccessToken } from "./podioAuth.js";
 import { extractPdfText } from "./extractPdfText.js";  // ✅ NEW import
+import { setItemValues } from "./podio.js";
+
 
 const PORT = process.env.PORT || 10000;
 const app = express();
@@ -76,6 +78,27 @@ app.post("/podio-hook", async (req, res) => {
         }
 
         console.log("✅ Classification results:", results);
+        // ✅ Step 4. Update Podio fields with the classification
+        if (results.length > 0) {
+            const first = results[0].classification;
+
+            const values = {
+                "nombre-corto": results[0].file,  // map to your Podio field IDs or external IDs
+                "fraccion": first.fraccion,
+                "justificacion": first.justificacion,
+                "alternativas": first.alternativas?.join("\n") || "",
+                "notas": first.notas || "",
+                "dudas": first.dudas || "",
+            };
+
+            try {
+                await setItemValues(item_id, values, token);
+                console.log("✅ Podio fields updated for item:", item_id);
+            } catch (updateErr) {
+                console.error("❌ Failed to update Podio fields:", updateErr.message);
+            }
+        }
+
 
         res.json({ status: "ok", item_id, req_id, results });
     } catch (err) {
