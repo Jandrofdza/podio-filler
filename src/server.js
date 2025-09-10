@@ -3,7 +3,7 @@ import { fetchPodioFileBuffer } from "./fetchPodioFileBuffer.js";
 import { classifyInputs } from "./openai.js";   // or classifyWithFiles if you later add it
 import { getPodioFiles } from "./podio.js";     // wrapper we added in podio.js
 import { getPodioAccessToken } from "./podioAuth.js";
-
+import { extractPdfText } from "./extractPdfText.js";  // ✅ NEW import
 
 const PORT = process.env.PORT || 10000;
 const app = express();
@@ -57,7 +57,15 @@ app.post("/podio-hook", async (req, res) => {
         // Step 3. Classify each buffer
         const results = [];
         for (const f of buffers) {
-            const text = f.buffer.toString("utf-8");
+            let text = "";
+
+            if (f.name.toLowerCase().endsWith(".pdf")) {
+                console.log(`📑 Extracting text from PDF: ${f.name}`);
+                text = await extractPdfText(f.buffer, { maxChars: 20000, maxPages: 3 });
+            } else {
+                console.log(`📄 Treating as text: ${f.name}`);
+                text = f.buffer.toString("utf-8");
+            }
 
             // 🚨 truncate so GPT only gets the first 8000 characters
             const snippet = text.slice(0, 8000);
