@@ -30,7 +30,7 @@ app.post("/podio-hook", async (req, res) => {
     try {
         console.log(`🔍 Processing Podio item: ${item_id}`);
 
-        // ✅ Explicitly grab token
+        // ✅ Get Podio token
         const token = await getPodioAccessToken();
         if (!token) {
             console.error("❌ PODIO_TOKEN is missing from environment!");
@@ -38,10 +38,10 @@ app.post("/podio-hook", async (req, res) => {
         }
         console.log("🔑 PODIO_TOKEN loaded (first 10 chars):", token.slice(0, 10));
 
-        // Step 1. Fetch files for the item
+        // Step 1. Fetch files
         const files = await getPodioFiles(item_id, token);
 
-        // Step 2. Download file buffers
+        // Step 2. Download buffers
         const buffers = [];
         for (const f of files) {
             try {
@@ -77,11 +77,11 @@ app.post("/podio-hook", async (req, res) => {
 
         console.log("✅ Classification results:", results);
 
-        // Step 4. Update Podio fields
+        // Step 4. Map GPT → Podio external IDs
         if (results.length > 0) {
             const first = results[0].classification;
-
             const values = {};
+
             if (results[0].file) {
                 values["titulo"] = results[0].file; // Nombre corto
             }
@@ -95,13 +95,19 @@ app.post("/podio-hook", async (req, res) => {
                 values["justificacion-legal"] = first.justificacion;
             }
             if (first.alternativas && first.alternativas.length > 0) {
-                values["analisis"] = first.alternativas.join("\n");
+                values["analisis"] = Array.isArray(first.alternativas)
+                    ? first.alternativas.join("\n")
+                    : first.alternativas;
             }
             if (first.notas && first.notas.length > 0) {
-                values["notas-del-clasificador"] = first.notas;
+                values["notas-del-clasificador"] = Array.isArray(first.notas)
+                    ? first.notas.join("\n")
+                    : first.notas;
             }
             if (first.dudas && first.dudas.length > 0) {
-                values["dudas-para-el-cliente"] = first.dudas;
+                values["dudas-para-el-cliente"] = Array.isArray(first.dudas)
+                    ? first.dudas.join("\n")
+                    : first.dudas;
             }
             if (first.regulacion) {
                 values["regulacion"] = first.regulacion;
@@ -112,7 +118,7 @@ app.post("/podio-hook", async (req, res) => {
 
             try {
                 await setItemValues(item_id, values, token);
-                console.log("✅ Podio fields updated for item:", item_id, values);
+                console.log("✅ Podio fields updated:", values);
             } catch (updateErr) {
                 console.error("❌ Failed to update Podio fields:", updateErr.message);
             }
@@ -125,7 +131,7 @@ app.post("/podio-hook", async (req, res) => {
     }
 });
 
-// ✅ Start server ONCE
+// ✅ Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
