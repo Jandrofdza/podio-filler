@@ -82,9 +82,10 @@ app.post("/podio-hook", async (req, res) => {
             const first = results[0].classification;
             const values = {};
 
-            if (results[0].file) {
-                values["titulo"] = results[0].file; // Nombre corto
+            if (first.nombre_corto) {
+                values["titulo"] = first.nombre_corto; // GPT-generated short title
             }
+        }
             if (first.descripcion) {
                 values["descripcion-del-producto"] = first.descripcion;
             }
