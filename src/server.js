@@ -29,7 +29,7 @@ app.post("/podio-hook", async (req, res) => {
         console.log(`🔍 Processing Podio item: ${item_id}`);
 
         // ✅ Explicitly grab token from env
-        const token = process.env.PODIO_TOKEN;
+        const token = await getPodioAccessToken();
         if (!token) {
             console.error("❌ PODIO_TOKEN is missing from environment!");
             return res.status(500).json({ error: "No Podio token available" });
