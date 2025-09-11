@@ -8,16 +8,15 @@ import { extractPdfText } from "./extractPdfText.js";
 const PORT = process.env.PORT || 10000;
 const app = express();
 
-// ✅ Parse both JSON and form-encoded bodies (Podio can send either)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check route
+// Health check
 app.get("/healthz", (req, res) => {
     res.status(200).send("ok");
 });
 
-// Podio webhook route
+// Podio webhook
 app.post("/podio-hook", async (req, res) => {
     console.log("📦 Incoming body:", req.body);
 
@@ -67,7 +66,6 @@ app.post("/podio-hook", async (req, res) => {
                 text = f.buffer.toString("utf-8");
             }
 
-            // 🚨 truncate before sending to GPT
             const snippet = text.slice(0, 8000);
             console.log(`Sending ${snippet.length} chars to OpenAI (truncated)`);
 
@@ -83,9 +81,8 @@ app.post("/podio-hook", async (req, res) => {
             const values = {};
 
             if (first.nombre_corto) {
-                values["titulo"] = first.nombre_corto; // GPT-generated short title
+                values["titulo"] = first.nombre_corto; // Nombre corto
             }
-        }
             if (first.descripcion) {
                 values["descripcion-del-producto"] = first.descripcion;
             }
@@ -132,7 +129,6 @@ app.post("/podio-hook", async (req, res) => {
     }
 });
 
-// ✅ Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
